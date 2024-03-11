@@ -1,7 +1,9 @@
-import { Request, Response } from "express";
-import generateJwt from "../utils/jwt";
-import { getUsers } from "../models/user";
 import { User } from "@prisma/client";
+import bcrypt from "bcrypt";
+import { Request, Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import generateJwt from "../utils/jwt";
+import prisma from "../utils/prisma";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -13,17 +15,32 @@ export const login = async (req: Request, res: Response) => {
   }
 
   // check user exist
-  const users: User[] = await getUsers({
-    where: {
-      email: email,
-    },
-  });
+  let users: User[];
+
+  try {
+    users = await prisma.user.findMany({
+      where: {
+        email: email,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
+
   if (users.length < 1) {
     res.status(400).json({ message: "User not found" });
     return;
   }
 
   // check password hash
+  const user: User = users[0];
+  const comparePassword: boolean = bcrypt.compareSync(password, user.password);
+
+  if (!comparePassword) {
+    res.status(401).json({ message: "Credentials not match" });
+    return;
+  }
 
   // create token and refresh token
   const token: string = generateJwt({ hours: 3, user_id: users[0].id }); // 3 hours
@@ -39,10 +56,41 @@ export const login = async (req: Request, res: Response) => {
   });
 };
 
-export const register = (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
 
+  if (!email || !password || !name) {
+    res.status(400).json({ message: "Email, password, and name are required" });
+    return;
+  }
+
   // check if user already exist
+  let users: User[];
+  try {
+    users = await prisma.user.findMany({
+      where: {
+        email: email,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
+
+  if (users.length > 0) {
+    res.status(400).json({ message: "User already registered" });
+    return;
+  }
+
+  // registering retrieved user
+  await prisma.user.create({
+    data: {
+      email: email,
+      name: name,
+      password: bcrypt.hashSync(password, 10),
+      id: uuidv4(),
+    },
+  });
 
   // send email verification
 

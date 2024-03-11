@@ -17,6 +17,7 @@ model User {
   id          String          @unique @db.VarChar(36)
   email       String          @unique @db.VarChar(255)
   name        String          @db.VarChar(255)
+  password    String          @db.VarChar(255)
   verified_at DateTime?
   created_at  DateTime        @default(now())
   updated_at  DateTime        @default(now())
