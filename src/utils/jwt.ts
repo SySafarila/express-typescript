@@ -1,10 +1,15 @@
 import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
 import { appName, jwtSecret } from "../env";
 
-const generateJwt = (hours: number, user_id: number | string): string => {
+interface JwtArg {
+  hours: number;
+  user_id: string;
+}
+
+const generateJwt = (args: JwtArg): string => {
   const payload: JwtPayload = {
-    user_id: user_id,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60 * hours, // 3h
+    user_id: args.user_id,
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * args.hours,
   };
   const options: SignOptions = {
     algorithm: "HS256",

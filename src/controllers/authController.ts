@@ -1,19 +1,42 @@
 import { Request, Response } from "express";
 import generateJwt from "../utils/jwt";
+import { getUsers } from "../models/user";
+import { User } from "@prisma/client";
 
-export const login = (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  // check credentials
+  // check input
   if (!email || !password) {
     res.status(400).json({ message: "Email or Password are required!" });
     return;
   }
 
-  // create token and refresh token
-  const token: string = generateJwt(3, 1);
+  // check user exist
+  const users: User[] = await getUsers({
+    where: {
+      email: email,
+    },
+  });
+  if (users.length < 1) {
+    res.status(400).json({ message: "User not found" });
+    return;
+  }
 
-  res.status(200).json({ message: "Authenticated", token: token });
+  // check password hash
+
+  // create token and refresh token
+  const token: string = generateJwt({ hours: 3, user_id: users[0].id }); // 3 hours
+  const refreshToken: string = generateJwt({
+    hours: 672,
+    user_id: users[0]?.id,
+  }); // 28 days
+
+  res.status(200).json({
+    message: "Authenticated",
+    token: token,
+    refresh_token: refreshToken,
+  });
 };
 
 export const register = (req: Request, res: Response) => {
