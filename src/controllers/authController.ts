@@ -49,6 +49,30 @@ export const login = async (req: Request, res: Response) => {
     user_id: users[0]?.id,
   }); // 28 days
 
+  try {
+    await prisma.$transaction([
+      prisma.accessToken.create({
+        data: {
+          id: uuidv4(),
+          token: token,
+          user_id: user.id,
+          refresh_token: {
+            create: {
+              id: uuidv4(),
+              user_id: user.id,
+            },
+          },
+        },
+      }),
+    ]);
+  } catch (error) {
+    res.status(500).json({
+      message:
+        "Internal server error when storing access token and refresh token to database",
+    });
+    return;
+  }
+
   res.status(200).json({
     message: "Authenticated",
     token: token,

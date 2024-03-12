@@ -14,14 +14,16 @@ datasource db {
 }
 
 model User {
-  id          String          @unique @db.VarChar(36)
-  email       String          @unique @db.VarChar(255)
-  name        String          @db.VarChar(255)
-  password    String          @db.VarChar(255)
-  verified_at DateTime?
-  created_at  DateTime        @default(now())
-  updated_at  DateTime        @default(now())
-  roles       UsersHasRoles[]
+  id             String          @unique @db.VarChar(36)
+  email          String          @unique @db.VarChar(255)
+  name           String          @db.VarChar(255)
+  password       String          @db.VarChar(255)
+  verified_at    DateTime?
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @default(now())
+  roles          UsersHasRoles[]
+  access_tokens  AccessToken[]
+  refresh_tokens RefreshToken[]
 
   @@map("users")
 }
@@ -66,4 +68,28 @@ model UsersHasRoles {
   updated_at DateTime @default(now())
 
   @@map("users_has_roles")
+}
+
+model AccessToken {
+  id            String        @unique @db.VarChar(36)
+  user_id       String        @db.VarChar(36)
+  token         String        @db.LongText()
+  user          User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @default(now())
+  refresh_token RefreshToken?
+
+  @@map("access_tokens")
+}
+
+model RefreshToken {
+  id         String      @unique @db.VarChar(36)
+  user_id    String      @db.VarChar(36)
+  user       User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  token_id   String      @unique @db.VarChar(36)
+  token      AccessToken @relation(fields: [token_id], references: [id], onDelete: Cascade)
+  created_at DateTime    @default(now())
+  updated_at DateTime    @default(now())
+
+  @@map("refresh_tokens")
 }
