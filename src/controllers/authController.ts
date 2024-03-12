@@ -1,16 +1,19 @@
 import { User } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import { ValidationError } from "joi";
 import { v4 as uuidv4 } from "uuid";
 import generateJwt from "../utils/jwt";
 import prisma from "../utils/prisma";
+import loginValidator from "../validations/login";
+import registerValidator from "../validations/register";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
+  const checkValidationError: ValidationError = loginValidator(req.body);
 
-  // check input
-  if (!email || !password) {
-    res.status(400).json({ message: "Email or Password are required!" });
+  if (checkValidationError) {
+    res.status(400).json({ message: checkValidationError.details[0].message });
     return;
   }
 
@@ -82,9 +85,10 @@ export const login = async (req: Request, res: Response) => {
 
 export const register = async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
+  const checkValidationError: ValidationError = registerValidator(req.body);
 
-  if (!email || !password || !name) {
-    res.status(400).json({ message: "Email, password, and name are required" });
+  if (checkValidationError) {
+    res.status(400).json({ message: checkValidationError.details[0].message });
     return;
   }
 
@@ -107,14 +111,19 @@ export const register = async (req: Request, res: Response) => {
   }
 
   // registering retrieved user
-  await prisma.user.create({
-    data: {
-      email: email,
-      name: name,
-      password: bcrypt.hashSync(password, 10),
-      id: uuidv4(),
-    },
-  });
+  try {
+    await prisma.user.create({
+      data: {
+        email: email,
+        name: name,
+        password: bcrypt.hashSync(password, 10),
+        id: uuidv4(),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
 
   // send email verification
 
